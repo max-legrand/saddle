@@ -1,8 +1,9 @@
-let template =
-  {|
-(lang dune 3.16)
+let template_start = {|(lang dune 3.16)
 
-(name %s)
+(name |}
+
+let template_mid =
+  {|)
 
 (generate_opam_files true)
 
@@ -18,12 +19,15 @@ let template =
 (documentation https://url/to/documentation)
 
 (package
- (name camlsp)
+ (name |}
+;;
+
+let template_end =
+  {|)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends
-   ocaml
-   dune
+   ocaml dune lwt stdio base cmdliner core core_unix
  )
  (tags
   (topics "to describe" your project)))

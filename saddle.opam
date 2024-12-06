@@ -18,6 +18,8 @@ depends: [
   "cmdliner"
   "core"
   "core_unix"
+  "ocaml-lsp-server"
+  "ocamlformat"
   "odoc" {with-doc}
 ]
 build: [
