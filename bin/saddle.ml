@@ -1,6 +1,7 @@
 (* open Base *)
 open Core_unix
 
+let ( let* ) = Result.bind
 let exists fp = access fp [ `Exists ]
 
 let populate_template template_string name =
@@ -12,7 +13,12 @@ let populate_template template_string name =
 let write_flake dir project_name =
   let new_path = Filename.concat dir "flake.nix" in
   let new_file = open_out new_path in
-  populate_template Flake_template.template project_name |> output_string new_file;
+  let contents =
+    String.cat
+      (String.cat Flake_template.template_start project_name)
+      Flake_template.template_end
+  in
+  contents |> output_string new_file;
   close_out new_file
 ;;
 
@@ -44,8 +50,7 @@ let write_envrc_ocamlfmt dir =
 
 let init_dune path project_name =
   let original_dir = Unix.getcwd () in
-  Unix.chdir path;
-  let cmd = Printf.sprintf "dune init project %s ." project_name in
+  let cmd = Printf.sprintf "dune init project %s %s" project_name path in
   let env = Unix.environment () in
   let process = open_process_full cmd ~env in
   let stderr_contents = In_channel.input_all process.stderr in
@@ -53,6 +58,21 @@ let init_dune path project_name =
   match exit_status with
   | Ok () ->
     (* Run `dune build`, this WILL fail though *)
+    let new_path = Filename.concat path "dune-project" in
+    let new_file = open_out new_path in
+    let content =
+      String.concat
+        ""
+        [ Dune_template.template_start
+        ; project_name
+        ; Dune_template.template_mid
+        ; project_name
+        ; Dune_template.template_end
+        ]
+    in
+    output_string new_file content;
+    close_out new_file;
+    Unix.chdir path;
     let cmd = "dune build" in
     let env = Unix.environment () in
     let process = open_process_full cmd ~env in
@@ -77,7 +97,6 @@ let run_proc cmd =
 
 let setup_log_library path jujutsu =
   (* First init a git repo *)
-  let ( let* ) = Result.bind in
   let cmd = "git init; git branch -M main" in
   let original_dir = Unix.getcwd () in
   Unix.chdir path;
@@ -96,7 +115,7 @@ let setup_log_library path jujutsu =
   in
   let* () = run_proc submodule_setup in
   (* Commit the change *)
-  let cmd = "git commit -m 'Added spice submodule'" in
+  let cmd = "git add .; git commit -m 'Added spice submodule'" in
   let* () = run_proc cmd in
   Unix.chdir original_dir;
   Ok result
@@ -110,6 +129,16 @@ let write_gitignore path =
   close_out new_file
 ;;
 
+let init_flake path =
+  Spice.debugf "Initializing flake";
+  let original_dir = Unix.getcwd () in
+  Unix.chdir path;
+  let cmd = "nix flake update" in
+  let* result = run_proc cmd in
+  Unix.chdir original_dir;
+  Ok result
+;;
+
 let main path name jujutsu =
   Spice.debugf "Saddling up %s @ %s" name path;
   (* Check if the project path already exists *)
@@ -120,16 +149,19 @@ let main path name jujutsu =
   | Error _ ->
     ();
     (* Make the project directory *)
-    Sys.mkdir path 0o755;
-    (* Write the flake *)
-    write_flake path name;
-    (* Write the envrc and ocamlformat *)
-    write_envrc_ocamlfmt path;
     (* Init the dune project *)
     (match init_dune path name with
      | Ok () -> ()
      | Error err -> failwith err);
+    (* Write the flake *)
+    write_flake path name;
+    let* () = init_flake path in
     write_window_run path name;
     write_gitignore path;
-    setup_log_library path jujutsu
+    (match setup_log_library path jujutsu with
+     | Ok () -> ()
+     | Error err -> failwith err);
+    (* Write the envrc and ocamlformat *)
+    write_envrc_ocamlfmt path;
+    Ok ()
 ;;

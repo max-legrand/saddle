@@ -1,27 +1,35 @@
-let template =
-  {|
-{
+let template_start =
+  {|{
   inputs = {
     opam-nix.url = "github:tweag/opam-nix";
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.follows = "opam-nix/nixpkgs";
   };
   outputs = { self, flake-utils, opam-nix, nixpkgs }@inputs:
-    let package = "%s";
+    let package = "|}
+;;
+
+let template_end =
+  {|";
     in flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
         on = opam-nix.lib.${system};
         
-        # Fetch spice source using fetchzip
         spiceSource = pkgs.fetchzip {
           url = "https://github.com/max-legrand/spice/archive/refs/heads/main.zip";
           sha256 = "sha256-gW2grebfEVthIh0SYltfJ+ah9A7tgb9pgIkbhy0DK0g=";
         };
         
-        scope = on.buildOpamProject { } package ./. { 
+        # Add development tools to the scope
+        devPackagesQuery = {
           ocaml-base-compiler = "5.2.0";
+          ocaml-lsp-server = "1.19.0";  # Add explicit version
+          ocamlformat = "*";
         };
+        
+        scope = on.buildOpamProject { } package ./. devPackagesQuery;
+        
         overlay = final: prev: {
           ocurl = prev.ocurl.overrideAttrs (old: {
             buildInputs = (old.buildInputs or [ ]) ++ [ 
@@ -40,23 +48,23 @@ let template =
           });
         });
         scope' = scope.overrideScope overlay;
+        
         finalPackage = scope'.${package}.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++ [
             pkgs.git
           ];
-           buildPhase = ''
-             mkdir -p lib
-             rm -rf lib/spice
-             # Create spice directory and copy contents with proper permissions
-             mkdir -p lib/spice
-             cp -rL ${spiceSource}/lib/* lib/spice/
-             cp -rL ${spiceSource}/dune-project lib/spice/
-             chmod -R u+w lib/spice
-             
-             echo "=== New contents of lib/spice ==="
-             ls -la lib/spice/
-             
-             dune build --release @install
+          buildPhase = ''
+            mkdir -p lib
+            rm -rf lib/spice
+            mkdir -p lib/spice
+            cp -rL ${spiceSource}/lib/* lib/spice/
+            cp -rL ${spiceSource}/dune-project lib/spice/
+            chmod -R u+w lib/spice
+            
+            echo "=== New contents of lib/spice ==="
+            ls -la lib/spice/
+            
+            dune build --release @install
           '';
           installPhase = ''
             mkdir -p $out/lib/ocaml/5.2.0/site-lib
@@ -75,12 +83,7 @@ let template =
         };
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
-          buildInputs = with pkgs; [
-            ocamlPackages.ocaml-lsp
-            ocamlPackages.ocamlformat
-            curl
-            curl.dev
-          ];
+          buildInputs = [ scope'.ocaml-lsp-server scope'.ocamlformat ];
         };
       });
 }

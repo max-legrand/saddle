@@ -17,7 +17,10 @@
  (name saddle)
  (synopsis "A tool for bootstrapping a custom OCaml project.")
  (description "A small CLI tool for setting up and bootstrapping an OCaml project. Heavily tailored towards my personal preferences")
- (depends ocaml dune lwt stdio base cmdliner core core_unix)
+ (depends
+   ocaml dune lwt stdio base cmdliner core core_unix
+   ocaml-lsp-server 
+   ocamlformat)
  (tags
   (topics "CLI" "project management" "build system")))
 
