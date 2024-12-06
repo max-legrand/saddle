@@ -78,7 +78,7 @@ let run_proc cmd =
 let setup_log_library path jujutsu =
   (* First init a git repo *)
   let ( let* ) = Result.bind in
-  let cmd = "git init" in
+  let cmd = "git init; git branch -M main" in
   let original_dir = Unix.getcwd () in
   Unix.chdir path;
   let* result = run_proc cmd in
