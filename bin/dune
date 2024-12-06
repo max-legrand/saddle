@@ -1,0 +1,5 @@
+(executable
+ (public_name saddle)
+ (name main)
+ (modules main saddle flake_template dune_template windows_template)
+ (libraries spice cmdliner base unix core_unix ))
