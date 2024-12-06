@@ -10,6 +10,13 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         on = opam-nix.lib.${system};
+        
+        # Fetch spice source using fetchzip
+        spiceSource = pkgs.fetchzip {
+          url = "https://github.com/max-legrand/spice/archive/refs/heads/main.zip";
+          sha256 = "sha256-gW2grebfEVthIh0SYltfJ+ah9A7tgb9pgIkbhy0DK0g=";
+        };
+        
         scope = on.buildOpamProject { } package ./. { 
           ocaml-base-compiler = "5.2.0";
         };
@@ -31,23 +38,31 @@
           });
         });
         scope' = scope.overrideScope overlay;
-
         finalPackage = scope'.${package}.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++ [
             pkgs.git
           ];
-          buildPhase = ''
-            dune build --release @install
+           buildPhase = ''
+             mkdir -p lib
+             rm -rf lib/spice
+             # Create spice directory and copy contents with proper permissions
+             mkdir -p lib/spice
+             cp -rL ${spiceSource}/lib/* lib/spice/
+             cp -rL ${spiceSource}/dune-project lib/spice/
+             chmod -R u+w lib/spice
+             
+             echo "=== New contents of lib/spice ==="
+             ls -la lib/spice/
+             
+             dune build --release @install
           '';
           installPhase = ''
             mkdir -p $out/lib/ocaml/5.2.0/site-lib
             dune install --prefix $out --libdir $out/lib/ocaml/5.2.0/site-lib --release
           '';
         });
-
       in {
         legacyPackages = scope';
-
         packages = {
           default = finalPackage;
           ${package} = finalPackage;
@@ -56,7 +71,6 @@
           type = "app";
           program = "${finalPackage}/bin/${package}";
         };
-
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
           buildInputs = with pkgs; [
