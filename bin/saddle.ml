@@ -38,12 +38,16 @@ let write_window_run dir path =
 let write_envrc_ocamlfmt dir =
   let envrc_path = Filename.concat dir ".envrc" in
   let ocamlformat_path = Filename.concat dir ".ocamlformat" in
+  let ocp_indent_path = Filename.concat dir ".ocp-indent" in
   let envrc_file = open_out envrc_path in
   let ocamlformat_file = open_out ocamlformat_path in
+  let ocp_indent_file = open_out ocp_indent_path in
   let envrc_contents = "use flake" in
   let ocamlformat_contents = "profile=janestreet" in
+  let ocp_indent_contents = "JaneStreet" in
   output_string envrc_file envrc_contents;
   output_string ocamlformat_file ocamlformat_contents;
+  output_string ocp_indent_file ocp_indent_contents;
   close_out envrc_file;
   close_out ocamlformat_file
 ;;

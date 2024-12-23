@@ -15,21 +15,22 @@ let template_end =
       let
         pkgs = nixpkgs.legacyPackages.${system};
         on = opam-nix.lib.${system};
-        
+
         spiceSource = pkgs.fetchzip {
           url = "https://github.com/max-legrand/spice/archive/refs/heads/main.zip";
           sha256 = "sha256-gW2grebfEVthIh0SYltfJ+ah9A7tgb9pgIkbhy0DK0g=";
         };
-        
+
         # Add development tools to the scope
         devPackagesQuery = {
           ocaml-base-compiler = "5.2.0";
           ocaml-lsp-server = "1.19.0";  # Add explicit version
           ocamlformat = "*";
+          ocp-indent = "*";
         };
-        
+
         scope = on.buildOpamProject { } package ./. devPackagesQuery;
-        
+
         overlay = final: prev: {
           ocurl = prev.ocurl.overrideAttrs (old: {
             buildInputs = (old.buildInputs or [ ]) ++ [ 
@@ -48,7 +49,7 @@ let template_end =
           });
         });
         scope' = scope.overrideScope overlay;
-        
+
         finalPackage = scope'.${package}.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++ [
             pkgs.git
@@ -60,10 +61,10 @@ let template_end =
             cp -rL ${spiceSource}/lib/* lib/spice/
             cp -rL ${spiceSource}/dune-project lib/spice/
             chmod -R u+w lib/spice
-            
+
             echo "=== New contents of lib/spice ==="
             ls -la lib/spice/
-            
+
             dune build --release @install
           '';
           installPhase = ''
@@ -83,7 +84,7 @@ let template_end =
         };
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
-          buildInputs = [ scope'.ocaml-lsp-server scope'.ocamlformat ];
+          buildInputs = [ scope'.ocaml-lsp-server scope'.ocamlformat scope'.ocp-indent];
         };
       });
 }
