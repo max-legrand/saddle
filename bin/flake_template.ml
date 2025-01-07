@@ -38,6 +38,11 @@ let template_end =
               pkgs.curl.dev
             ];
           });
+          "conf-pkg-config" = prev."conf-pkg-config".overrideAttrs (old: {
+            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [
+              pkgs.pkg-config
+            ];
+          });
         } // (pkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           caqti = prev.caqti.overrideAttrs (old: {
             preBuild = ''
