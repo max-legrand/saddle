@@ -18,7 +18,7 @@ let template_end =
 
         spiceSource = pkgs.fetchzip {
           url = "https://github.com/max-legrand/spice/archive/refs/heads/main.zip";
-          sha256 = "sha256-gW2grebfEVthIh0SYltfJ+ah9A7tgb9pgIkbhy0DK0g=";
+          sha256 = "sha256-sf0R6H1KoHi1kPayibdWY+rbuMohIock/2dUOgxBucU=";
         };
 
         # Add development tools to the scope
